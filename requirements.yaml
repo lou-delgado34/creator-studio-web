@@ -1,0 +1,32 @@
+packages:
+  "framer-motion": "For page transitions, smooth micro-interactions, and staggered animations in the dashboard."
+  "clsx": "For conditional class name merging."
+  "tailwind-merge": "For resolving Tailwind CSS class conflicts safely."
+  "date-fns": "For formatting mock schedule dates."
+
+images:
+  - path: "artifacts/creator-studio/public/images/template-1.png"
+    description: "Vibrant cyberpunk neon glowing template design, vertical video thumbnail"
+    aspect_ratio: "9:16"
+  - path: "artifacts/creator-studio/public/images/template-2.png"
+    description: "Soft pastel aesthetic minimalist lifestyle template, vertical video thumbnail"
+    aspect_ratio: "9:16"
+  - path: "artifacts/creator-studio/public/images/template-3.png"
+    description: "Dynamic fast-paced fitness and energy template cover, vertical video thumbnail"
+    aspect_ratio: "9:16"
+  - path: "artifacts/creator-studio/public/images/avatar.png"
+    description: "Cool trendy 3D illustrated avatar of a modern content creator on dark background"
+    aspect_ratio: "1:1"
+  - path: "artifacts/creator-studio/public/images/project-1.png"
+    description: "Cinematic moody neon street scene, video thumbnail"
+    aspect_ratio: "16:9"
+  - path: "artifacts/creator-studio/public/images/project-2.png"
+    description: "Aesthetic warm cozy coffee shop pouring latte art, video thumbnail"
+    aspect_ratio: "16:9"
+  - path: "artifacts/creator-studio/public/images/project-3.png"
+    description: "Breathtaking moody sunset over mountains, video thumbnail"
+    aspect_ratio: "16:9"
+
+notes:
+  - The application is purely frontend, using local React state to simulate a creator studio experience.
+  - Video uploads use URL.createObjectURL to preview local files without needing a backend endpoint.
