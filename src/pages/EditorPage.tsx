@@ -8,6 +8,7 @@ type SavedEditorItem = {
   caption: string;
   status: "draft" | "queued";
   updatedAt: string;
+  previewUrl?: string;
 };
 
 function loadItems(): SavedEditorItem[] {
@@ -24,6 +25,65 @@ function saveItems(items: SavedEditorItem[]) {
   localStorage.setItem("creatorstudio_items", JSON.stringify(items));
 }
 
+function makeMockImage(title: string, caption: string) {
+  const safeTitle = title || "Untitled Image";
+  const safeCaption = caption || "No prompt yet";
+
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200">
+    <defs>
+      <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#0f172a"/>
+        <stop offset="50%" stop-color="#111827"/>
+        <stop offset="100%" stop-color="#581c87"/>
+      </linearGradient>
+      <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
+        <stop offset="0%" stop-color="#ec4899"/>
+        <stop offset="100%" stop-color="#a855f7"/>
+      </linearGradient>
+    </defs>
+
+    <rect width="100%" height="100%" fill="url(#bg)"/>
+
+    <circle cx="980" cy="220" r="170" fill="rgba(236,72,153,0.16)"/>
+    <circle cx="240" cy="980" r="220" fill="rgba(168,85,247,0.14)"/>
+
+    <rect x="90" y="90" rx="36" ry="36" width="1020" height="1020" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)"/>
+
+    <text x="140" y="220" font-family="Arial, sans-serif" font-size="78" font-weight="700" fill="white">
+      ${safeTitle.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+    </text>
+
+    <rect x="140" y="280" rx="16" ry="16" width="320" height="14" fill="url(#accent)"/>
+
+    <foreignObject x="140" y="340" width="880" height="520">
+      <div xmlns="http://www.w3.org/1999/xhtml"
+        style="
+          color:#e5e7eb;
+          font-family:Arial, sans-serif;
+          font-size:34px;
+          line-height:1.5;
+          width:100%;
+          height:100%;
+          overflow:hidden;
+        ">
+        Prompt: ${safeCaption
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")}
+      </div>
+    </foreignObject>
+
+    <rect x="140" y="980" rx="22" ry="22" width="420" height="82" fill="url(#accent)"/>
+    <text x="184" y="1032" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="white">
+      Mock Image Preview
+    </text>
+  </svg>
+  `;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export default function EditorPage() {
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<SavedEditorItem[]>([]);
@@ -34,8 +94,9 @@ export default function EditorPage() {
   const view = searchParams.get("view");
 
   const [title, setTitle] = useState(mode === "project" ? "New Project" : "New Draft");
-  const [type, setType] = useState("post");
+  const [type, setType] = useState("image");
   const [caption, setCaption] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
 
   useEffect(() => {
     const loaded = loadItems();
@@ -47,6 +108,7 @@ export default function EditorPage() {
         setTitle(found.title);
         setType(found.type);
         setCaption(found.caption);
+        setPreviewUrl(found.previewUrl || "");
       }
     }
   }, [editId]);
@@ -57,6 +119,17 @@ export default function EditorPage() {
     }
     return items;
   }, [items, view]);
+
+  function handleGenerateMockPreview() {
+    if (type !== "image") {
+      setMessage("Mock preview works only when Content Type is Image.");
+      return;
+    }
+
+    const mock = makeMockImage(title, caption);
+    setPreviewUrl(mock);
+    setMessage("Mock image preview created. This is not real AI yet.");
+  }
 
   function handleSave(status: "draft" | "queued") {
     const now = new Date().toISOString();
@@ -78,6 +151,7 @@ export default function EditorPage() {
           type,
           caption,
           status,
+          previewUrl,
           updatedAt: now,
         };
       }
@@ -88,19 +162,27 @@ export default function EditorPage() {
         type,
         caption,
         status,
+        previewUrl,
         updatedAt: now,
       });
     }
 
     saveItems(nextItems);
     setItems(nextItems);
-    setMessage(status === "draft" ? "Draft saved." : "Item added to queue.");
+    setMessage(
+      status === "draft"
+        ? "Draft saved."
+        : type === "image"
+        ? "Item added to queue. Real AI image generation is not connected yet."
+        : "Item added to queue."
+    );
   }
 
   function handleLoad(item: SavedEditorItem) {
     setTitle(item.title);
     setType(item.type);
     setCaption(item.caption);
+    setPreviewUrl(item.previewUrl || "");
     setMessage(`Loaded: ${item.title}`);
   }
 
@@ -118,8 +200,8 @@ export default function EditorPage() {
           <div style={badgeStyle}>Working Editor</div>
           <h1 style={titleStyle}>Create content for your business</h1>
           <p style={subtitleStyle}>
-            This editor now lets you create drafts and queue content items. The next step after
-            this will be saving everything into Supabase.
+            This editor now lets you save drafts, queue work, and create a mock image preview.
+            Real AI image generation is the next upgrade.
           </p>
 
           <div style={fieldWrap}>
@@ -135,21 +217,21 @@ export default function EditorPage() {
           <div style={fieldWrap}>
             <label style={labelStyle}>Content Type</label>
             <select style={inputStyle} value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="image">Image</option>
               <option value="post">Post</option>
               <option value="video">Video</option>
-              <option value="image">Image</option>
               <option value="email">Email</option>
               <option value="script">Script</option>
             </select>
           </div>
 
           <div style={fieldWrap}>
-            <label style={labelStyle}>Caption / Notes</label>
+            <label style={labelStyle}>Caption / Prompt / Notes</label>
             <textarea
               style={textAreaStyle}
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Write your caption, content idea, or notes here..."
+              placeholder="Write your image prompt or content idea here..."
             />
           </div>
 
@@ -157,8 +239,13 @@ export default function EditorPage() {
             <button style={secondaryButton} onClick={() => handleSave("draft")}>
               Save Draft
             </button>
+
             <button style={primaryButton} onClick={() => handleSave("queued")}>
               Add To Queue
+            </button>
+
+            <button style={outlineButton} onClick={handleGenerateMockPreview}>
+              Generate Mock Preview
             </button>
           </div>
 
@@ -166,13 +253,29 @@ export default function EditorPage() {
         </div>
 
         <div style={sideCard}>
-          <div style={sectionTitle}>Editor Tips</div>
-          <ul style={tipList}>
-            <li>Use short clear titles</li>
-            <li>Save rough ideas as drafts</li>
-            <li>Move finished work to queue</li>
-            <li>Later we will connect uploads and database saving</li>
-          </ul>
+          <div style={sectionTitle}>Preview</div>
+
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Preview"
+              style={{
+                width: "100%",
+                borderRadius: 20,
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "block",
+              }}
+            />
+          ) : (
+            <div style={emptyPreview}>
+              No preview yet. If you choose <strong>Image</strong>, click
+              <strong> Generate Mock Preview</strong>.
+            </div>
+          )}
+
+          <div style={tipBox}>
+            Real AI image generation is not connected yet. This preview is a visual mockup only.
+          </div>
         </div>
       </div>
 
@@ -189,7 +292,7 @@ export default function EditorPage() {
           <div style={listWrap}>
             {filteredItems.map((item) => (
               <div key={item.id} style={listRow}>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <div style={itemTitle}>{item.title}</div>
                   <div style={itemMeta}>
                     {item.type} • {item.status} • {new Date(item.updatedAt).toLocaleString()}
@@ -320,23 +423,40 @@ const buttonRow: React.CSSProperties = {
 const primaryButton: React.CSSProperties = {
   border: "none",
   borderRadius: 16,
-  padding: "14px 20px",
+  padding: "14px 18px",
+  minWidth: 170,
   fontSize: 16,
   fontWeight: 800,
   color: "white",
   cursor: "pointer",
   background: "linear-gradient(90deg, #ec4899, #a855f7)",
+  whiteSpace: "normal",
 };
 
 const secondaryButton: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: 16,
-  padding: "14px 20px",
+  padding: "14px 18px",
+  minWidth: 150,
   fontSize: 16,
   fontWeight: 800,
   color: "white",
   cursor: "pointer",
   background: "#1e293b",
+  whiteSpace: "normal",
+};
+
+const outlineButton: React.CSSProperties = {
+  border: "1px solid rgba(192,132,252,0.4)",
+  borderRadius: 16,
+  padding: "14px 18px",
+  minWidth: 220,
+  fontSize: 16,
+  fontWeight: 800,
+  color: "#f5d0fe",
+  cursor: "pointer",
+  background: "transparent",
+  whiteSpace: "normal",
 };
 
 const messageStyle: React.CSSProperties = {
@@ -346,6 +466,7 @@ const messageStyle: React.CSSProperties = {
   background: "#0f172a",
   color: "#4ade80",
   fontWeight: 700,
+  lineHeight: 1.5,
 };
 
 const sectionTitle: React.CSSProperties = {
@@ -354,12 +475,23 @@ const sectionTitle: React.CSSProperties = {
   marginBottom: 16,
 };
 
-const tipList: React.CSSProperties = {
-  margin: 0,
-  paddingLeft: 20,
+const emptyPreview: React.CSSProperties = {
+  padding: 18,
+  borderRadius: 16,
+  background: "#0f172a",
   color: "#cbd5e1",
-  lineHeight: 1.8,
-  fontSize: 17,
+  fontSize: 16,
+  lineHeight: 1.6,
+};
+
+const tipBox: React.CSSProperties = {
+  marginTop: 16,
+  padding: 14,
+  borderRadius: 16,
+  background: "rgba(236,72,153,0.08)",
+  color: "#fbcfe8",
+  fontSize: 15,
+  lineHeight: 1.5,
 };
 
 const emptyStyle: React.CSSProperties = {
@@ -384,12 +516,14 @@ const listRow: React.CSSProperties = {
   padding: 16,
   borderRadius: 18,
   background: "#0f172a",
+  flexWrap: "wrap",
 };
 
 const itemTitle: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 700,
   marginBottom: 6,
+  wordBreak: "break-word",
 };
 
 const itemMeta: React.CSSProperties = {
