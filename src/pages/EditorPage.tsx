@@ -8,7 +8,7 @@ type SavedEditorItem = {
   caption: string;
   status: "draft" | "queued";
   updatedAt: string;
-  previewUrl?: string;
+  mockReady?: boolean;
 };
 
 function loadItems(): SavedEditorItem[] {
@@ -25,65 +25,6 @@ function saveItems(items: SavedEditorItem[]) {
   localStorage.setItem("creatorstudio_items", JSON.stringify(items));
 }
 
-function makeMockImage(title: string, caption: string) {
-  const safeTitle = title || "Untitled Image";
-  const safeCaption = caption || "No prompt yet";
-
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200">
-    <defs>
-      <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-        <stop offset="0%" stop-color="#0f172a"/>
-        <stop offset="50%" stop-color="#111827"/>
-        <stop offset="100%" stop-color="#581c87"/>
-      </linearGradient>
-      <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
-        <stop offset="0%" stop-color="#ec4899"/>
-        <stop offset="100%" stop-color="#a855f7"/>
-      </linearGradient>
-    </defs>
-
-    <rect width="100%" height="100%" fill="url(#bg)"/>
-
-    <circle cx="980" cy="220" r="170" fill="rgba(236,72,153,0.16)"/>
-    <circle cx="240" cy="980" r="220" fill="rgba(168,85,247,0.14)"/>
-
-    <rect x="90" y="90" rx="36" ry="36" width="1020" height="1020" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)"/>
-
-    <text x="140" y="220" font-family="Arial, sans-serif" font-size="78" font-weight="700" fill="white">
-      ${safeTitle.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-    </text>
-
-    <rect x="140" y="280" rx="16" ry="16" width="320" height="14" fill="url(#accent)"/>
-
-    <foreignObject x="140" y="340" width="880" height="520">
-      <div xmlns="http://www.w3.org/1999/xhtml"
-        style="
-          color:#e5e7eb;
-          font-family:Arial, sans-serif;
-          font-size:34px;
-          line-height:1.5;
-          width:100%;
-          height:100%;
-          overflow:hidden;
-        ">
-        Prompt: ${safeCaption
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")}
-      </div>
-    </foreignObject>
-
-    <rect x="140" y="980" rx="22" ry="22" width="420" height="82" fill="url(#accent)"/>
-    <text x="184" y="1032" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="white">
-      Mock Image Preview
-    </text>
-  </svg>
-  `;
-
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 export default function EditorPage() {
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<SavedEditorItem[]>([]);
@@ -96,7 +37,7 @@ export default function EditorPage() {
   const [title, setTitle] = useState(mode === "project" ? "New Project" : "New Draft");
   const [type, setType] = useState("image");
   const [caption, setCaption] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [mockReady, setMockReady] = useState(false);
 
   useEffect(() => {
     const loaded = loadItems();
@@ -108,7 +49,7 @@ export default function EditorPage() {
         setTitle(found.title);
         setType(found.type);
         setCaption(found.caption);
-        setPreviewUrl(found.previewUrl || "");
+        setMockReady(Boolean(found.mockReady));
       }
     }
   }, [editId]);
@@ -126,8 +67,7 @@ export default function EditorPage() {
       return;
     }
 
-    const mock = makeMockImage(title, caption);
-    setPreviewUrl(mock);
+    setMockReady(true);
     setMessage("Mock image preview created. This is not real AI yet.");
   }
 
@@ -151,7 +91,7 @@ export default function EditorPage() {
           type,
           caption,
           status,
-          previewUrl,
+          mockReady,
           updatedAt: now,
         };
       }
@@ -162,7 +102,7 @@ export default function EditorPage() {
         type,
         caption,
         status,
-        previewUrl,
+        mockReady,
         updatedAt: now,
       });
     }
@@ -182,7 +122,7 @@ export default function EditorPage() {
     setTitle(item.title);
     setType(item.type);
     setCaption(item.caption);
-    setPreviewUrl(item.previewUrl || "");
+    setMockReady(Boolean(item.mockReady));
     setMessage(`Loaded: ${item.title}`);
   }
 
@@ -200,7 +140,7 @@ export default function EditorPage() {
           <div style={badgeStyle}>Working Editor</div>
           <h1 style={titleStyle}>Create content for your business</h1>
           <p style={subtitleStyle}>
-            This editor now lets you save drafts, queue work, and create a mock image preview.
+            This editor lets you save drafts, queue work, and create a visible mock preview.
             Real AI image generation is the next upgrade.
           </p>
 
@@ -235,7 +175,7 @@ export default function EditorPage() {
             />
           </div>
 
-          <div style={buttonRow}>
+          <div style={buttonGrid}>
             <button style={secondaryButton} onClick={() => handleSave("draft")}>
               Save Draft
             </button>
@@ -245,7 +185,7 @@ export default function EditorPage() {
             </button>
 
             <button style={outlineButton} onClick={handleGenerateMockPreview}>
-              Generate Mock Preview
+              Generate Preview
             </button>
           </div>
 
@@ -255,26 +195,31 @@ export default function EditorPage() {
         <div style={sideCard}>
           <div style={sectionTitle}>Preview</div>
 
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt="Preview"
-              style={{
-                width: "100%",
-                borderRadius: 20,
-                border: "1px solid rgba(255,255,255,0.08)",
-                display: "block",
-              }}
-            />
+          {type === "image" && mockReady ? (
+            <div style={mockCard}>
+              <div style={mockGlowOne} />
+              <div style={mockGlowTwo} />
+
+              <div style={mockInner}>
+                <div style={mockBadge}>Mock Image</div>
+                <div style={mockTitle}>{title || "Untitled Image"}</div>
+                <div style={mockLine} />
+                <div style={mockPromptLabel}>Prompt</div>
+                <div style={mockPromptText}>
+                  {caption || "No prompt yet"}
+                </div>
+                <div style={mockFooter}>Preview only • not real AI yet</div>
+              </div>
+            </div>
           ) : (
             <div style={emptyPreview}>
-              No preview yet. If you choose <strong>Image</strong>, click
-              <strong> Generate Mock Preview</strong>.
+              No preview yet. Choose <strong>Image</strong>, then click{" "}
+              <strong>Generate Preview</strong>.
             </div>
           )}
 
           <div style={tipBox}>
-            Real AI image generation is not connected yet. This preview is a visual mockup only.
+            This preview is a visual mockup only. The app is not generating a real AI image yet.
           </div>
         </div>
       </div>
@@ -292,11 +237,12 @@ export default function EditorPage() {
           <div style={listWrap}>
             {filteredItems.map((item) => (
               <div key={item.id} style={listRow}>
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={itemTitle}>{item.title}</div>
                   <div style={itemMeta}>
                     {item.type} • {item.status} • {new Date(item.updatedAt).toLocaleString()}
                   </div>
+                  {item.caption ? <div style={itemCaption}>{item.caption}</div> : null}
                 </div>
 
                 <div style={rowButtons}>
@@ -366,7 +312,7 @@ const badgeStyle: React.CSSProperties = {
 const titleStyle: React.CSSProperties = {
   margin: 0,
   fontSize: 42,
-  lineHeight: 1,
+  lineHeight: 1.1,
   fontWeight: 800,
 };
 
@@ -413,50 +359,59 @@ const textAreaStyle: React.CSSProperties = {
   resize: "vertical",
 };
 
-const buttonRow: React.CSSProperties = {
-  display: "flex",
+const buttonGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: 12,
   marginTop: 8,
-  flexWrap: "wrap",
 };
 
 const primaryButton: React.CSSProperties = {
   border: "none",
   borderRadius: 16,
-  padding: "14px 18px",
-  minWidth: 170,
-  fontSize: 16,
+  padding: "14px 12px",
+  minHeight: 56,
+  width: "100%",
+  fontSize: 15,
   fontWeight: 800,
   color: "white",
   cursor: "pointer",
   background: "linear-gradient(90deg, #ec4899, #a855f7)",
   whiteSpace: "normal",
+  wordBreak: "break-word",
+  lineHeight: 1.2,
 };
 
 const secondaryButton: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: 16,
-  padding: "14px 18px",
-  minWidth: 150,
-  fontSize: 16,
+  padding: "14px 12px",
+  minHeight: 56,
+  width: "100%",
+  fontSize: 15,
   fontWeight: 800,
   color: "white",
   cursor: "pointer",
   background: "#1e293b",
   whiteSpace: "normal",
+  wordBreak: "break-word",
+  lineHeight: 1.2,
 };
 
 const outlineButton: React.CSSProperties = {
   border: "1px solid rgba(192,132,252,0.4)",
   borderRadius: 16,
-  padding: "14px 18px",
-  minWidth: 220,
-  fontSize: 16,
+  padding: "14px 12px",
+  minHeight: 56,
+  width: "100%",
+  fontSize: 15,
   fontWeight: 800,
   color: "#f5d0fe",
   cursor: "pointer",
   background: "transparent",
   whiteSpace: "normal",
+  wordBreak: "break-word",
+  lineHeight: 1.2,
 };
 
 const messageStyle: React.CSSProperties = {
@@ -473,6 +428,99 @@ const sectionTitle: React.CSSProperties = {
   fontSize: 28,
   fontWeight: 800,
   marginBottom: 16,
+};
+
+const mockCard: React.CSSProperties = {
+  position: "relative",
+  minHeight: 420,
+  borderRadius: 24,
+  overflow: "hidden",
+  background: "linear-gradient(135deg, #111827 0%, #1e1b4b 50%, #581c87 100%)",
+  border: "1px solid rgba(255,255,255,0.08)",
+};
+
+const mockGlowOne: React.CSSProperties = {
+  position: "absolute",
+  width: 180,
+  height: 180,
+  borderRadius: "50%",
+  background: "rgba(236,72,153,0.18)",
+  top: 20,
+  right: 20,
+};
+
+const mockGlowTwo: React.CSSProperties = {
+  position: "absolute",
+  width: 220,
+  height: 220,
+  borderRadius: "50%",
+  background: "rgba(168,85,247,0.14)",
+  bottom: 10,
+  left: 10,
+};
+
+const mockInner: React.CSSProperties = {
+  position: "relative",
+  zIndex: 2,
+  margin: 28,
+  padding: 24,
+  borderRadius: 24,
+  minHeight: 320,
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const mockBadge: React.CSSProperties = {
+  display: "inline-block",
+  alignSelf: "flex-start",
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.08)",
+  color: "#f5d0fe",
+  fontWeight: 700,
+  fontSize: 13,
+  marginBottom: 18,
+};
+
+const mockTitle: React.CSSProperties = {
+  fontSize: 36,
+  fontWeight: 800,
+  lineHeight: 1.1,
+  marginBottom: 12,
+  wordBreak: "break-word",
+};
+
+const mockLine: React.CSSProperties = {
+  width: 120,
+  height: 6,
+  borderRadius: 999,
+  background: "linear-gradient(90deg, #ec4899, #a855f7)",
+  marginBottom: 20,
+};
+
+const mockPromptLabel: React.CSSProperties = {
+  fontSize: 13,
+  textTransform: "uppercase",
+  letterSpacing: 1,
+  color: "#cbd5e1",
+  marginBottom: 8,
+};
+
+const mockPromptText: React.CSSProperties = {
+  fontSize: 20,
+  lineHeight: 1.5,
+  color: "white",
+  wordBreak: "break-word",
+};
+
+const mockFooter: React.CSSProperties = {
+  marginTop: "auto",
+  paddingTop: 20,
+  fontSize: 14,
+  color: "#e9d5ff",
+  fontWeight: 700,
 };
 
 const emptyPreview: React.CSSProperties = {
@@ -529,6 +577,14 @@ const itemTitle: React.CSSProperties = {
 const itemMeta: React.CSSProperties = {
   fontSize: 14,
   color: "#94a3b8",
+};
+
+const itemCaption: React.CSSProperties = {
+  marginTop: 8,
+  fontSize: 15,
+  color: "#e2e8f0",
+  wordBreak: "break-word",
+  lineHeight: 1.5,
 };
 
 const rowButtons: React.CSSProperties = {
