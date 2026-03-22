@@ -1,101 +1,48 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell";
-import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import EditorPage from "./pages/EditorPage";
 import PricingPage from "./pages/PricingPage";
 import AdminPage from "./pages/AdminPage";
-import NotFoundPage from "./pages/NotFoundPage";
-
-function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { loading, session } = useAuth();
-
-  if (loading) {
-    return <div className="screen-center">Loading your app...</div>;
-  }
-
-  if (!session) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return children;
-}
-
-function AdminRoute({ children }: { children: JSX.Element }) {
-  const { loading, session, profile } = useAuth();
-
-  if (loading) {
-    return <div className="screen-center">Checking admin access...</div>;
-  }
-
-  if (!session) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (profile?.role !== "admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-}
+import AuthPage from "./pages/AuthPage";
 
 export default function App() {
-  const { session } = useAuth();
+  const email = localStorage.getItem("creatorstudio-email") || "you@example.com";
+  const role = localStorage.getItem("creatorstudio-role") || "admin";
+  const plan = localStorage.getItem("creatorstudio-plan") || "admin_unlimited";
+  const credits = localStorage.getItem("creatorstudio-credits") || "Unlimited";
+
+  const handleSignOut = () => {
+    localStorage.removeItem("creatorstudio-auth");
+    window.location.href = "/auth";
+  };
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={<Navigate to={session ? "/dashboard" : "/auth"} replace />}
-      />
-      <Route path="/auth" element={<AuthPage />} />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
 
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <DashboardPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/"
+          element={
+            <AppShell
+              email={email}
+              role={role}
+              plan={plan}
+              credits={credits}
+              onSignOut={handleSignOut}
+            />
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="editor" element={<EditorPage />} />
+          <Route path="pricing" element={<PricingPage />} />
+          <Route path="admin" element={<AdminPage />} />
+        </Route>
 
-      <Route
-        path="/editor"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <EditorPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/pricing"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <PricingPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AppShell>
-              <AdminPage />
-            </AppShell>
-          </AdminRoute>
-        }
-      />
-
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
