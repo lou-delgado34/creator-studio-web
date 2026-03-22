@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 type ItemRecord = {
   id: string;
@@ -16,14 +17,6 @@ function readItems(): ItemRecord[] {
     return JSON.parse(raw);
   } catch {
     return [];
-  }
-}
-
-function formatDate(value: string) {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
   }
 }
 
@@ -48,129 +41,133 @@ export default function DashboardPage() {
     const queued = items.filter((item) => item.status === "queued").length;
 
     return {
-      totalProjects: items.length,
+      total: items.length,
       drafts,
       queued,
-      generatedImages: queued,
       credits: "Unlimited",
-      activePlan: "admin_unlimited",
+      plan: "admin_unlimited",
     };
   }, [items]);
 
-  const recentItems = [...items]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 4);
-
-  const quickIdeas = [
-    "Turn one idea into 5 short-form posts",
-    "Create a weekly content batch for Instagram",
-    "Write hooks for a TikTok carousel post",
-    "Build a product promo image set",
-  ];
+  const recent = [...items].slice(0, 5);
 
   return (
-    <div className="cs-page">
-      <section className="cs-hero">
-        <div>
-          <div className="cs-badge">Creator Business Hub</div>
-          <h1 className="cs-hero-title">Build, organize, and grow your creator business</h1>
-          <p className="cs-hero-text">
-            This dashboard is your command center. Create content, save drafts,
-            manage queue items, and keep your work moving.
+    <div className="cs-screen">
+      <section className="cs-hero-strip">
+        <div className="cs-hero-left">
+          <div className="cs-chip">Business Dashboard</div>
+          <h1>Run your content business from one place</h1>
+          <p>
+            Organize ideas, create content, manage your queue, and move faster with
+            a cleaner studio-style workspace.
           </p>
 
-          <div className="cs-hero-actions">
-            <a className="cs-btn cs-btn-primary" href="/editor?mode=create">
-              Generate Image
-            </a>
-            <a className="cs-btn cs-btn-secondary" href="/editor?mode=draft">
-              Save Draft
-            </a>
-            <a className="cs-btn cs-btn-secondary" href="/pricing">
-              View Plans
-            </a>
+          <div className="cs-hero-buttons">
+            <Link to="/editor?mode=create" className="cs-btn cs-btn-primary">
+              Create Content
+            </Link>
+            <Link to="/editor?mode=draft" className="cs-btn cs-btn-secondary">
+              Open Drafts
+            </Link>
           </div>
         </div>
 
-        <div className="cs-hero-panel">
-          <div className="cs-panel-kicker">Today’s Focus</div>
-          <h3>Stay consistent, not random</h3>
-          <p>
-            Your app should feel like a place where content actually gets created,
-            saved, organized, and turned into business.
-          </p>
+        <div className="cs-hero-right">
+          <div className="cs-floating-card">
+            <span>Projects</span>
+            <strong>{stats.total}</strong>
+          </div>
+          <div className="cs-floating-card">
+            <span>Drafts</span>
+            <strong>{stats.drafts}</strong>
+          </div>
+          <div className="cs-floating-card">
+            <span>Queue</span>
+            <strong>{stats.queued}</strong>
+          </div>
+          <div className="cs-floating-card">
+            <span>Plan</span>
+            <strong>{stats.plan}</strong>
+          </div>
+        </div>
+      </section>
 
-          <div className="cs-mini-grid">
-            <div className="cs-mini-card">
+      <section className="cs-dashboard-grid">
+        <div className="cs-panel cs-panel-large">
+          <div className="cs-panel-head">
+            <h3>Quick Actions</h3>
+          </div>
+
+          <div className="cs-action-grid">
+            <Link to="/editor?mode=create" className="cs-action-card">
+              <strong>Create image idea</strong>
+              <span>Start a new content project fast</span>
+            </Link>
+
+            <Link to="/editor?mode=draft" className="cs-action-card">
+              <strong>Save a draft</strong>
+              <span>Keep rough ideas without losing them</span>
+            </Link>
+
+            <Link to="/pricing" className="cs-action-card">
+              <strong>View plans</strong>
+              <span>Compare upgrades and usage tools</span>
+            </Link>
+
+            <Link to="/admin" className="cs-action-card">
+              <strong>Admin tools</strong>
+              <span>Manage higher-level account controls</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="cs-panel">
+          <div className="cs-panel-head">
+            <h3>Overview</h3>
+          </div>
+
+          <div className="cs-stat-stack">
+            <div className="cs-stat-line">
+              <span>Total Projects</span>
+              <strong>{stats.total}</strong>
+            </div>
+            <div className="cs-stat-line">
               <span>Drafts</span>
               <strong>{stats.drafts}</strong>
             </div>
-            <div className="cs-mini-card">
-              <span>Queued</span>
+            <div className="cs-stat-line">
+              <span>Queue</span>
               <strong>{stats.queued}</strong>
             </div>
-            <div className="cs-mini-card">
+            <div className="cs-stat-line">
               <span>Credits</span>
               <strong>{stats.credits}</strong>
             </div>
-            <div className="cs-mini-card">
-              <span>Plan</span>
-              <strong>{stats.activePlan}</strong>
-            </div>
           </div>
         </div>
-      </section>
 
-      <section className="cs-stats-grid">
-        <div className="cs-stat-card">
-          <span>Total Projects</span>
-          <strong>{stats.totalProjects}</strong>
-        </div>
-        <div className="cs-stat-card">
-          <span>Drafts</span>
-          <strong>{stats.drafts}</strong>
-        </div>
-        <div className="cs-stat-card">
-          <span>Queue</span>
-          <strong>{stats.queued}</strong>
-        </div>
-        <div className="cs-stat-card">
-          <span>Generated Images</span>
-          <strong>{stats.generatedImages}</strong>
-        </div>
-        <div className="cs-stat-card">
-          <span>Credits</span>
-          <strong>{stats.credits}</strong>
-        </div>
-        <div className="cs-stat-card">
-          <span>Active Plan</span>
-          <strong>{stats.activePlan}</strong>
-        </div>
-      </section>
-
-      <section className="cs-two-col">
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Recent Projects</h2>
-            <a href="/editor?mode=create">Open Editor</a>
+        <div className="cs-panel cs-panel-large">
+          <div className="cs-panel-head">
+            <h3>Recent Projects</h3>
+            <Link to="/editor?mode=create">Go to editor</Link>
           </div>
 
-          {recentItems.length === 0 ? (
-            <div className="cs-empty-state">
-              Nothing here yet. Create your first draft or queue item in the editor.
+          {recent.length === 0 ? (
+            <div className="cs-empty">
+              Nothing created yet. Start in the Create page.
             </div>
           ) : (
-            <div className="cs-list">
-              {recentItems.map((item) => (
-                <div key={item.id} className="cs-list-row">
-                  <div className="cs-list-thumb" />
-                  <div className="cs-list-content">
+            <div className="cs-project-list">
+              {recent.map((item) => (
+                <div className="cs-project-row" key={item.id}>
+                  <div className="cs-project-art" />
+                  <div className="cs-project-copy">
                     <strong>{item.title}</strong>
                     <span>
-                      {item.type} • {item.status} • {formatDate(item.createdAt)}
+                      {item.type} • {item.status}
                     </span>
                   </div>
-                  <div className={`cs-pill ${item.status === "queued" ? "queued" : "draft"}`}>
+                  <div className={`cs-status-pill ${item.status}`}>
                     {item.status}
                   </div>
                 </div>
@@ -179,63 +176,26 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Ideas for Today</h2>
+        <div className="cs-panel">
+          <div className="cs-panel-head">
+            <h3>Today</h3>
           </div>
 
-          <div className="cs-idea-list">
-            {quickIdeas.map((idea) => (
-              <div key={idea} className="cs-idea-item">
-                <div className="cs-dot" />
-                <span>{idea}</span>
-              </div>
-            ))}
+          <div className="cs-note-card">
+            <strong>Stay consistent</strong>
+            <p>
+              Build drafts, turn them into queue items, then move into real
+              generation and delivery.
+            </p>
           </div>
-        </div>
-      </section>
 
-      <section className="cs-three-col">
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Queue Snapshot</h2>
+          <div className="cs-note-card">
+            <strong>Next step</strong>
+            <p>
+              We are about to connect your editor to real image creation and make
+              this feel like a real creator workspace.
+            </p>
           </div>
-          <div className="cs-card-big-number">{stats.queued}</div>
-          <p className="cs-muted">
-            Items waiting to be used, published, or turned into the next step.
-          </p>
-        </div>
-
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Business Status</h2>
-          </div>
-          <div className="cs-status-stack">
-            <div className="cs-status-line">
-              <span>Workspace</span>
-              <strong>Live</strong>
-            </div>
-            <div className="cs-status-line">
-              <span>Supabase Auth</span>
-              <strong>Connected</strong>
-            </div>
-            <div className="cs-status-line">
-              <span>Draft Saving</span>
-              <strong>Working</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Next Build Goals</h2>
-          </div>
-          <ul className="cs-goal-list">
-            <li>Real image generation</li>
-            <li>Content library filters</li>
-            <li>Queue saved to database</li>
-            <li>Analytics upgrade</li>
-          </ul>
         </div>
       </section>
     </div>
