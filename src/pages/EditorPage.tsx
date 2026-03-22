@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-type ContentType = "Image" | "Caption" | "Post" | "Video Idea";
-
-type SavedItem = {
+type ItemRecord = {
   id: string;
   title: string;
-  type: ContentType;
+  type: string;
   prompt: string;
   status: "draft" | "queued";
   createdAt: string;
 };
 
-function getSavedItems(): SavedItem[] {
+function readItems(): ItemRecord[] {
   try {
     const raw = localStorage.getItem("creatorstudio-items");
     if (!raw) return [];
@@ -21,195 +20,155 @@ function getSavedItems(): SavedItem[] {
   }
 }
 
-function saveSavedItems(items: SavedItem[]) {
-  localStorage.setItem("creatorstudio-items", JSON.stringify(items));
-  window.dispatchEvent(new Event("creatorstudio-items-updated"));
-}
-
-function makeId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function formatDate(value: string) {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
-}
-
-export default function EditorPage() {
-  const [title, setTitle] = useState("New Draft");
-  const [contentType, setContentType] = useState<ContentType>("Image");
-  const [prompt, setPrompt] = useState("goku on nimbus cloud with chichi");
-  const [items, setItems] = useState<SavedItem[]>([]);
-  const [message, setMessage] = useState("");
-  const [previewSeed, setPreviewSeed] = useState(1);
+export default function DashboardPage() {
+  const [items, setItems] = useState<ItemRecord[]>([]);
 
   useEffect(() => {
-    setItems(getSavedItems());
+    const load = () => setItems(readItems());
+    load();
+
+    window.addEventListener("storage", load);
+    window.addEventListener("creatorstudio-items-updated", load as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", load);
+      window.removeEventListener("creatorstudio-items-updated", load as EventListener);
+    };
   }, []);
 
-  const previewTitle = title.trim() || "Untitled Project";
-  const previewPrompt = prompt.trim() || "No prompt yet";
+  const stats = useMemo(() => {
+    const drafts = items.filter((item) => item.status === "draft").length;
+    const queued = items.filter((item) => item.status === "queued").length;
 
-  const refreshItems = () => {
-    setItems(getSavedItems());
-  };
-
-  const createItem = (status: "draft" | "queued") => {
-    const newItem: SavedItem = {
-      id: makeId(),
-      title: previewTitle,
-      type: contentType,
-      prompt: previewPrompt,
-      status,
-      createdAt: new Date().toISOString(),
+    return {
+      total: items.length,
+      drafts,
+      queued,
+      credits: "Unlimited",
+      plan: "admin_unlimited",
     };
+  }, [items]);
 
-    const next = [newItem, ...getSavedItems()];
-    saveSavedItems(next);
-    setItems(next);
-    setMessage(status === "draft" ? "Draft saved." : "Item added to queue.");
-  };
-
-  const deleteItem = (id: string) => {
-    const next = getSavedItems().filter((item) => item.id !== id);
-    saveSavedItems(next);
-    setItems(next);
-    setMessage("Item deleted.");
-  };
-
-  const loadItem = (item: SavedItem) => {
-    setTitle(item.title);
-    setContentType(item.type);
-    setPrompt(item.prompt);
-    setMessage(`Loaded: ${item.title}`);
-  };
-
-  const generatePreview = () => {
-    setPreviewSeed((value) => value + 1);
-    setMessage("Visual preview refreshed.");
-  };
-
-  const draftItems = useMemo(
-    () => items.filter((item) => item.status === "draft"),
-    [items]
-  );
-
-  const queuedItems = useMemo(
-    () => items.filter((item) => item.status === "queued"),
-    [items]
-  );
+  const recent = [...items].slice(0, 5);
 
   return (
-    <div className="cs-page">
-      <section className="cs-editor-layout">
-        <div className="cs-card">
-          <div className="cs-badge">Working Editor</div>
-          <h1 className="cs-editor-title">Create content for your business</h1>
-          <p className="cs-editor-text">
-            Use this workspace to save drafts, queue ideas, and preview what your
-            content could look like.
+    <div className="cs-screen">
+      <section className="cs-hero-strip">
+        <div className="cs-hero-left">
+          <div className="cs-chip">Business Dashboard</div>
+          <h1>Run your content business from one place</h1>
+          <p>
+            Organize ideas, create content, manage your queue, and move faster with
+            a cleaner studio-style workspace.
           </p>
 
-          <div className="cs-form-group">
-            <label>Title</label>
-            <input
-              className="cs-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Type project title"
-            />
+          <div className="cs-hero-buttons">
+            <Link to="/editor?mode=create" className="cs-btn cs-btn-primary">
+              Create Content
+            </Link>
+            <Link to="/editor?mode=draft" className="cs-btn cs-btn-secondary">
+              Open Drafts
+            </Link>
           </div>
-
-          <div className="cs-form-group">
-            <label>Content Type</label>
-            <select
-              className="cs-input"
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value as ContentType)}
-            >
-              <option>Image</option>
-              <option>Caption</option>
-              <option>Post</option>
-              <option>Video Idea</option>
-            </select>
-          </div>
-
-          <div className="cs-form-group">
-            <label>Caption / Prompt / Notes</label>
-            <textarea
-              className="cs-textarea"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Type your idea here"
-            />
-          </div>
-
-          <div className="cs-button-row">
-            <button className="cs-btn cs-btn-secondary" onClick={() => createItem("draft")}>
-              Save Draft
-            </button>
-            <button className="cs-btn cs-btn-primary" onClick={() => createItem("queued")}>
-              Add To Queue
-            </button>
-            <button className="cs-btn cs-btn-outline" onClick={generatePreview}>
-              Generate Preview
-            </button>
-          </div>
-
-          {message && <div className="cs-success-text">{message}</div>}
         </div>
 
-        <div className="cs-card cs-preview-card">
-          <div className="cs-card-head">
-            <h2>Preview</h2>
+        <div className="cs-hero-right">
+          <div className="cs-floating-card">
+            <span>Projects</span>
+            <strong>{stats.total}</strong>
           </div>
-
-          <div className="cs-mock-image">
-            <div className={`cs-mock-circle one seed-${previewSeed % 4}`} />
-            <div className={`cs-mock-circle two seed-${(previewSeed + 1) % 4}`} />
-            <div className="cs-mock-inner-card">
-              <div className="cs-mock-badge">Mock Image</div>
-              <h3>{previewTitle}</h3>
-              <div className="cs-mock-line" />
-              <p>{previewPrompt}</p>
-              <span>Preview only • real AI later</span>
-            </div>
+          <div className="cs-floating-card">
+            <span>Drafts</span>
+            <strong>{stats.drafts}</strong>
           </div>
-
-          <div className="cs-preview-note">
-            This preview is visual only right now. Real image generation comes in the next step.
+          <div className="cs-floating-card">
+            <span>Queue</span>
+            <strong>{stats.queued}</strong>
+          </div>
+          <div className="cs-floating-card">
+            <span>Plan</span>
+            <strong>{stats.plan}</strong>
           </div>
         </div>
       </section>
 
-      <section className="cs-two-col">
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Saved Drafts</h2>
+      <section className="cs-dashboard-grid">
+        <div className="cs-panel cs-panel-large">
+          <div className="cs-panel-head">
+            <h3>Quick Actions</h3>
           </div>
 
-          {draftItems.length === 0 ? (
-            <div className="cs-empty-state">Nothing saved yet.</div>
+          <div className="cs-action-grid">
+            <Link to="/editor?mode=create" className="cs-action-card">
+              <strong>Create image idea</strong>
+              <span>Start a new content project fast</span>
+            </Link>
+
+            <Link to="/editor?mode=draft" className="cs-action-card">
+              <strong>Save a draft</strong>
+              <span>Keep rough ideas without losing them</span>
+            </Link>
+
+            <Link to="/pricing" className="cs-action-card">
+              <strong>View plans</strong>
+              <span>Compare upgrades and usage tools</span>
+            </Link>
+
+            <Link to="/admin" className="cs-action-card">
+              <strong>Admin tools</strong>
+              <span>Manage higher-level account controls</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="cs-panel">
+          <div className="cs-panel-head">
+            <h3>Overview</h3>
+          </div>
+
+          <div className="cs-stat-stack">
+            <div className="cs-stat-line">
+              <span>Total Projects</span>
+              <strong>{stats.total}</strong>
+            </div>
+            <div className="cs-stat-line">
+              <span>Drafts</span>
+              <strong>{stats.drafts}</strong>
+            </div>
+            <div className="cs-stat-line">
+              <span>Queue</span>
+              <strong>{stats.queued}</strong>
+            </div>
+            <div className="cs-stat-line">
+              <span>Credits</span>
+              <strong>{stats.credits}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="cs-panel cs-panel-large">
+          <div className="cs-panel-head">
+            <h3>Recent Projects</h3>
+            <Link to="/editor?mode=create">Go to editor</Link>
+          </div>
+
+          {recent.length === 0 ? (
+            <div className="cs-empty">
+              Nothing created yet. Start in the Create page.
+            </div>
           ) : (
-            <div className="cs-grid-cards">
-              {draftItems.map((item) => (
-                <div key={item.id} className="cs-library-card">
-                  <div className="cs-library-thumb" />
-                  <div className="cs-library-body">
+            <div className="cs-project-list">
+              {recent.map((item) => (
+                <div className="cs-project-row" key={item.id}>
+                  <div className="cs-project-art" />
+                  <div className="cs-project-copy">
                     <strong>{item.title}</strong>
-                    <span>{item.type}</span>
-                    <small>{formatDate(item.createdAt)}</small>
+                    <span>
+                      {item.type} • {item.status}
+                    </span>
                   </div>
-                  <div className="cs-library-actions">
-                    <button className="cs-mini-btn" onClick={() => loadItem(item)}>
-                      Load
-                    </button>
-                    <button className="cs-mini-btn danger" onClick={() => deleteItem(item.id)}>
-                      Delete
-                    </button>
+                  <div className={`cs-status-pill ${item.status}`}>
+                    {item.status}
                   </div>
                 </div>
               ))}
@@ -217,36 +176,26 @@ export default function EditorPage() {
           )}
         </div>
 
-        <div className="cs-card">
-          <div className="cs-card-head">
-            <h2>Queue</h2>
+        <div className="cs-panel">
+          <div className="cs-panel-head">
+            <h3>Today</h3>
           </div>
 
-          {queuedItems.length === 0 ? (
-            <div className="cs-empty-state">Nothing queued yet.</div>
-          ) : (
-            <div className="cs-list">
-              {queuedItems.map((item) => (
-                <div key={item.id} className="cs-list-row">
-                  <div className="cs-list-thumb" />
-                  <div className="cs-list-content">
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.type} • {formatDate(item.createdAt)}
-                    </span>
-                  </div>
-                  <div className="cs-library-actions">
-                    <button className="cs-mini-btn" onClick={() => loadItem(item)}>
-                      Load
-                    </button>
-                    <button className="cs-mini-btn danger" onClick={() => deleteItem(item.id)}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="cs-note-card">
+            <strong>Stay consistent</strong>
+            <p>
+              Build drafts, turn them into queue items, then move into real
+              generation and delivery.
+            </p>
+          </div>
+
+          <div className="cs-note-card">
+            <strong>Next step</strong>
+            <p>
+              We are about to connect your editor to real image creation and make
+              this feel like a real creator workspace.
+            </p>
+          </div>
         </div>
       </section>
     </div>
